@@ -17,6 +17,12 @@ DRY_RUN = bool(os.environ.get("DRY_RUN"))
 # Only post jobs whose title contains one of these (case-insensitive). Empty = no filter.
 TITLE_KEYWORDS = []
 
+# Never post jobs whose title contains one of these (case-insensitive), even if
+# they pass the category filter below. Catches occasional miscategorized
+# postings, e.g. SimplifyJobs tags "Dynamic PC Support" (IT support, not SWE)
+# under category "Software". Add more terms here as they turn up.
+TITLE_EXCLUDE = ["pc support"]
+
 # Only post jobs in these categories (case-insensitive exact match against the
 # listing's "category" field). Empty = no filter. SimplifyJobs tags SWE roles
 # as "Software" (occasionally the legacy value "Software Engineering").
@@ -66,10 +72,11 @@ def eligible(row):
     date_posted = row.get("date_posted")
     if date_posted and (time.time() - date_posted) > MAX_JOB_AGE_DAYS * 86400:
         return False
-    if TITLE_KEYWORDS:
-        title = (row.get("title") or "").lower()
-        if not any(k.lower() in title for k in TITLE_KEYWORDS):
-            return False
+    title = (row.get("title") or "").lower()
+    if TITLE_EXCLUDE and any(k.lower() in title for k in TITLE_EXCLUDE):
+        return False
+    if TITLE_KEYWORDS and not any(k.lower() in title for k in TITLE_KEYWORDS):
+        return False
     return True
 
 

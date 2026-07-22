@@ -17,6 +17,17 @@ DRY_RUN = bool(os.environ.get("DRY_RUN"))
 # Only post jobs whose title contains one of these (case-insensitive). Empty = no filter.
 TITLE_KEYWORDS = []
 
+# Only post jobs in these categories (case-insensitive exact match against the
+# listing's "category" field). Empty = no filter. SimplifyJobs tags SWE roles
+# as "Software" (occasionally the legacy value "Software Engineering").
+CATEGORIES = ["Software", "Software Engineering"]
+
+# Ignore listings whose original posting is older than this many days, even if
+# we've never seen their id before. SimplifyJobs re-activates old listings
+# (active flips back to true) without updating date_posted, which otherwise
+# makes months-old postings look "new" to us.
+MAX_JOB_AGE_DAYS = 3
+
 EMBED_COLOR = 0x5865F2  # Discord blurple
 MAX_EMBEDS_PER_MESSAGE = 10
 
@@ -49,6 +60,11 @@ def save_seen(seen):
 
 def eligible(row):
     if not (row.get("active") and row.get("is_visible")):
+        return False
+    if CATEGORIES and (row.get("category") or "") not in CATEGORIES:
+        return False
+    date_posted = row.get("date_posted")
+    if date_posted and (time.time() - date_posted) > MAX_JOB_AGE_DAYS * 86400:
         return False
     if TITLE_KEYWORDS:
         title = (row.get("title") or "").lower()
